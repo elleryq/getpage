@@ -33,9 +33,13 @@ import quopri
 from BeautifulSoup import BeautifulSoup
 import urlparse
 from logging import Logger
+from readability.readability import Document
+
 
 class GetPage():
-    """ Get a webpage, and save it in a single file  the URL of a HTML Page. Returns a MIME-HTML representation of that page in a single File.
+
+    """ Get a webpage, and save it in a single file  the URL of a HTML Page. 
+        Returns a MIME-HTML representation of that page in a single File.
         There are a number of document formats
         consisting of a root resource and a number of distinct
         subsidiary resources referenced by URIs within that root resource.
@@ -47,24 +51,29 @@ class GetPage():
     _title = ''
     _msg = None
     _urls = {}
-    _options=[]
-    _args={}
-
+    _options = []
+    _args = {}
 
     def __init__(self, options):
         self._msg = MIMEMultipart('related')
         self._msg.preamble = 'This is a multi-part message in MIME format.\n'
 
     def add_html(self, url):
-        """ Takes the URL of a HTML Page. Returns a MIME encapsulated form of the HTML Code.
+        """ Takes the URL of a HTML Page. Returns a MIME encapsulated form of
+            the HTML Code.
 
-            If the HTML page itself links to images, scripts or stylesheet it calls the matching
-            encapsulation Methods for them recursivly
+            If the HTML page itself links to images, scripts or stylesheet it
+            calls the matching encapsulation Methods for them recursivly
         """
-        self._base_url=url
+        self._base_url = url
         response = urllib2.urlopen(url)
         html = response.read()
-        htmltxt = MIMEText(quopri.encodestring(html), 'html')
+        doc = Document(html)
+        readable_html = doc.summary()
+        readable_title = doc.title()
+        #htmltxt = MIMEText(quopri.encodestring(html), 'html')
+        htmltxt = MIMEText(quopri.encodestring(readable_html.encode('utf-8')),
+                           'html')
         htmltxt.add_header('Content-Transfer-Encoding', 'quoted-printable')
         htmltxt.add_header('Content-Location', url)
 
@@ -73,10 +82,16 @@ class GetPage():
         soup = BeautifulSoup(html)
         if self._title == '':
             if soup.head.title.string:
-                print "Hier: "+soup.head.title.string
-                self._title = quopri.encodestring(soup.head.title.string)
+                #print "Hier: " + soup.head.title.string
+                # self._title = quopri.encodestring(soup.head.title.string)
+                # _title = soup.head.title.string.replace(u'/', u'_').replace(
+                #         u'\\', u'_').replace(u'-', u'_')
+                # self._title = _title.encode('utf-8')
+                _title = readable_title.replace(u'/', u'_').replace(
+                        u'\\', u'_').replace(u'-', u'_')
+                self._title = _title.encode('utf-8')
             else:
-                self._title = "Ohne Titel"
+                self._title = "No title"
 
         images = soup.findAll('img')
         for img in images:
@@ -94,43 +109,44 @@ class GetPage():
 
         iframes = soup.findAll('iframe')
         for iframe in iframes:
-            url =  urlparse.urljoin(self._base_url, iframe['src'])
+            url = urlparse.urljoin(self._base_url, iframe['src'])
             if not url in self._urls:
-                print url
+                # print( url )
                 self._urls[url] = url
                 self.add_html(url)
 
         scripts = soup.findAll('script', type='text/javascript')
         for script in scripts:
-            print self._base_url
-            if 'src' in script.attrs: # ignore inline scripts
+            # print( self._base_url )
+            if 'src' in script.attrs:  # ignore inline scripts
                 print script['src']
                 url = urlparse.urljoin(self._base_url, script['src'])
-                print url
+                # print( url )
                 if not url in self._urls:
-                    print url
+                    # print( url )
                     self._urls[url] = url
                     self._add_script(url)
 
     def _add_css(self, url):
-        """ Takes the URL of a HTML Page. Returns a MIME encapsulated form of the HTML Code.
+        """ Takes the URL of a HTML Page. Returns a MIME encapsulated form of
+            the HTML Code.
 
-            If the HTML page itself links to images, scripts or stylesheet it calls the matching
-            encapsulation Methods for them recursivly
+            If the HTML page itself links to images, scripts or stylesheet it
+            calls the matching encapsulation Methods for them recursivly
 
         """
 
         response = urllib2.urlopen(url)
-        css = "/* Effective stylesheet produced by snapshot save */\r\n" + self._snapshot_save(response.read())
+        css = "/* Effective stylesheet produced by snapshot save */\r\n" + \
+            self._snapshot_save(response.read())
 
-        css_txt =MIMEText(quopri.encodestring(css), 'css')
+        css_txt = MIMEText(quopri.encodestring(css), 'css')
         css_txt.add_header('Content-Transfer-Encoding', 'quoted-printable')
         css_txt.add_header('Content-Location', url)
 
-
         self._msg.attach(css_txt)
         # TODO find by regex
-        matches = re.finditer(r'@import\surl\(\.*([-":.0-9a-z/]*)\);',css)
+        matches = re.finditer(r'@import\surl\(\.*([-":.0-9a-z/]*)\);', css)
         results = [match.group(1) for match in matches]
         for result in results:
             url = self._base_url + result
@@ -138,29 +154,31 @@ class GetPage():
                 self._urls[url] = url
                 self._add_css(self._base_url + result)
 
-        matches = re.finditer(r'background-image:\surl\(\.*([-":.0-9a-z/]*)\);',css)
+        matches = re.finditer(
+            r'background-image:\surl\(\.*([-":.0-9a-z/]*)\);', css)
         results = [match.group(1) for match in matches]
         for result in results:
             url = self._base_url + result
             if not url in self._urls:
                 self._urls[url] = url
                 self._add_image(self._base_url + result)
-    def _add_image(self, url):
-        """ Takes the URL of a HTML Page. Returns a MIME encapsulated form of the HTML Code.
 
-            If the HTML page itself links to images, scripts or stylesheet it calls the matching
-            encapsulation Methods for them recursivly
+    def _add_image(self, url):
+        """ Takes the URL of a HTML Page. Returns a MIME encapsulated form of 
+            the HTML Code.
+
+            If the HTML page itself links to images, scripts or stylesheet it 
+            calls the matching encapsulation Methods for them recursivly
 
         """
-        print url
+        # print(url)
         try:
             response = urllib2.urlopen(url)
             mime_type = response.info().gettype()
             img = response.read()
 
-            html_image =MIMEImage(img, mime_type)
+            html_image = MIMEImage(img, mime_type)
             html_image.add_header('Content-Location', url)
-
 
             self._msg.attach(html_image)
 
@@ -173,29 +191,33 @@ class GetPage():
                 print "Something happened! Error code", err.code
         except urllib2.URLError, err:
             print "Some other error happened:", err.reason
+
     def _add_script(self, url):
-        """ Takes the URL of a Javascript. Adds an quoted-Printable version of the script to th output file.
+        """ Takes the URL of a Javascript. Adds an quoted-Printable version of 
+            the script to th output file.
 
         """
 
         response = urllib2.urlopen(url)
         html = response.read()
 
-        htmltxt =MIMEText(quopri.encodestring(html), 'html')
+        htmltxt = MIMEText(quopri.encodestring(html), 'html')
         htmltxt.add_header('Content-Transfer-Encoding', 'quoted-printable')
         htmltxt.add_header('Content-Location', url)
-    def _add_iframe(self, url):
-        """ Takes the URL of an HTML Page inside an iFrame. Returns a MIME encapsulated form of the HTML Code.
 
-            If the HTML page itself links to images, scripts or stylesheet it calls the matching
-            encapsulation Methods for them recursivly
+    def _add_iframe(self, url):
+        """ Takes the URL of an HTML Page inside an iFrame. Returns a MIME
+            encapsulated form of the HTML Code.
+
+            If the HTML page itself links to images, scripts or stylesheet it
+            calls the matching encapsulation Methods for them recursivly
 
         """
 
         response = urllib2.urlopen(url)
         html = response.read()
 
-        htmltxt =MIMEText(quopri.encodestring(html), 'html')
+        htmltxt = MIMEText(quopri.encodestring(html), 'html')
 
         htmltxt.add_header('Content-Transfer-Encoding', 'quoted-printable')
         htmltxt.add_header('Content-Location', url)
@@ -210,12 +232,13 @@ class GetPage():
     def _snapshot_save(self, css):
         css = self.remove_comments(css)
 
-        css = re.sub('\s+',' ',css)
-        css = re.sub('}\s','}\n',css)
+        css = re.sub('\s+', ' ', css)
+        css = re.sub('}\s', '}\n', css)
 
         css2 = css
         return(css2)
-    def remove_comments(self,text):
+
+    def remove_comments(self, text):
         """ remove c-style comments.
             text: blob of text with comments (can include newlines)
             returns: text with comments removed
@@ -256,21 +279,23 @@ class GetPage():
                  [^/"'\\]*      ##  Chars which doesn't start a comment, string
                )                ##    or escape
         """
-        regex = re.compile(pattern, re.VERBOSE|re.MULTILINE|re.DOTALL)
+        regex = re.compile(pattern, re.VERBOSE | re.MULTILINE | re.DOTALL)
         noncomments = [m.group(2) for m in regex.finditer(text) if m.group(2)]
 
         return "".join(noncomments)
-    def retrieve(self,url):
-        """ Takes the URL of a HTML Page. Returns a MIME encapsulated form of the HTML Code.
 
-            If the HTML page itself links to images, scripts or stylesheet it calls the matching
-            encapsulation Methods for them recursivly
+    def retrieve(self, url):
+        """ Takes the URL of a HTML Page. Returns a MIME encapsulated form of
+            the HTML Code.
+
+            If the HTML page itself links to images, scripts or stylesheet it
+            calls the matching encapsulation Methods for them recursivly
 
         """
 
         self.add_html(url)
 
-        f=open(self._title +'.mht', 'w')
+        f = open(self._title + '.mht', 'w')
         f.write('From: <Saved by getpage 0.1>\r\n')
         f.write('Subject: ' + self._title + '\r\n')
         f.write('Date: Fri, 16 Mar 2012 11:13:53 +0100\r\n')
@@ -279,30 +304,33 @@ class GetPage():
 
 if __name__ == '__main__':
     print "getpage 0.0.5, a non-interactive webpage downloader"
-    """ Takes the URL of a HTML Page. Returns a MIME encapsulated form of the HTML Code.
+    """ Takes the URL of a HTML Page. Returns a MIME encapsulated form of the
+        HTML Code.
 
-        If the HTML page itself links to images, scripts or stylesheet it calls the matching
-        encapsulation Methods for them recursivly
+        If the HTML page itself links to images, scripts or stylesheet it calls 
+        the matching encapsulation Methods for them recursivly
 
     """
 
-    parser = argparse.ArgumentParser(description='Store a webpage into a single MIME-HTML file', usage='getpage [options] url')
+    parser = argparse.ArgumentParser(
+        description='Store a webpage into a single MIME-HTML file', usage='getpage [options] url')
 
     parser.add_argument("url",
-                      help="the url of the webpage we should get")
-    parser.add_argument("-V", "--version", action='version', version='getpage 0.0.5',
-                      help="the version of the programm")
+                        help="the url of the webpage we should get")
+    parser.add_argument(
+        "-V", "--version", action='version', version='getpage 0.0.5',
+        help="the version of the programm")
     parser.add_argument("-o", "--output", dest="filename",
-                      help="name of the outputfile FILE", metavar="FILE")
+                        help="name of the outputfile FILE", metavar="FILE")
     parser.add_argument("-d", "--debug",
-                      action="store_false", dest="verbose", default=True,
-                      help="print debug and verbose status messages to stdout")
+                        action="store_false", dest="verbose", default=True,
+                        help="print debug and verbose status messages to stdout")
     parser.add_argument("-v", "--verbose",
-                      action="store_false", dest="verbose", default=True,
-                      help="print verbose status messages to stdout")
+                        action="store_false", dest="verbose", default=True,
+                        help="print verbose status messages to stdout")
     parser.add_argument("-q", "--quiet",
-                      action="store_false", dest="verbose", default=True,
-                      help="don't print status messages to stdout")
+                        action="store_false", dest="verbose", default=True,
+                        help="don't print status messages to stdout")
 
     options = parser.parse_args()
     page = GetPage(options)
