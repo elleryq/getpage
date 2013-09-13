@@ -66,7 +66,7 @@ class GetPage():
 
         if self._title == '':
             self._title = readable_title.replace(u'/', u'_').replace(
-                u'\\', u'_').replace(u'-', u'_')
+                u'\\', u'_').replace(u'-', u'_').replace(u'"', u'').strip()
             title = Tag(soup, "title")
             title.setString(self._title)
             soup.head.insert(0, title)
