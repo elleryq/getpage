@@ -76,11 +76,11 @@ class GetPage():
             url = urlparse.urljoin(self._base_url, img['src'])
             if not url in self._urls:
                 self._urls[url] = url
-                img['src'] = self._get_image_as_base64(url)
+                img['src'] = self.get_image_as_base64(url)
 
         self._msg = soup.prettify()
 
-    def _get_image_as_base64(self, url):
+    def get_image_as_base64(self, url):
         """ Takes the URL of a HTML Page. Returns a base64 string.
         """
         try:
@@ -96,16 +96,10 @@ class GetPage():
             elif err.code == 403:
                 logging.error("Access denied!")
             else:
-                logging.error("Something happened! Error code", err.code)
+                logging.error("Something happened! Error code {0}".format(
+                    err.code))
         except urllib2.URLError, err:
-            logging.error("Some other error happened:", err.reason)
-
-    def _get_base_url(self, url):
-        pass
-        o = urlparse.urlparse(url)
-        print o.scheme
-        print o.netloc
-        return o.scheme + '://' + o.netloc
+            logging.error("Some other error happened: {0}".format(err.reason))
 
     def retrieve(self, url):
         """ Takes the URL of a HTML Page. Returns a MIME encapsulated form of
