@@ -55,6 +55,8 @@ class GetPage():
         readable_title = doc.title()
 
         soup = BeautifulSoup(readable_html)
+
+        # insert head.
         soup.html.insert(0, Tag(soup, "head"))
         meta = Tag(soup, "meta")
         meta.attrs.append(('http-equiv', "Content-Type"))
@@ -70,6 +72,18 @@ class GetPage():
             title = Tag(soup, "title")
             title.setString(self._title)
             soup.head.insert(0, title)
+
+        # insert origin.
+        div = Tag(soup, "div")
+        span = Tag(soup, "span")
+        link = Tag(soup, "a")
+        link.attrs.append(('href', url))
+        link.attrs.append(('title', readable_title))
+        link.setString(readable_title)
+        span.attrs.append(('class', 'origin'))
+        span.insert(0, link)
+        div.insert(0, span)
+        soup.body.insert(0, div)
 
         images = soup.findAll('img')
         for img in images:
