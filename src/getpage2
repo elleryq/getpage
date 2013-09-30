@@ -60,6 +60,9 @@ class GetPage():
         meta.attrs.append(('http-equiv', "Content-Type"))
         meta.attrs.append(('content', "text/html; charset=utf-8;"))
         soup.head.insert(0, meta)
+        meta = Tag(soup, "meta")
+        meta.attrs.append(('charset', 'UTF-8'))
+        soup.head.insert(0, meta)
 
         if self._title == '':
             self._title = readable_title.replace(u'/', u'_').replace(
@@ -111,7 +114,10 @@ class GetPage():
 
         dirs = [os.getcwd()]
         if self.options.output_directory:
-            os.makedirs(self.options.output_directory)
+            try:
+                os.makedirs(self.options.output_directory)
+            except OSError, ex:
+                print("Skip to make dirs.")
             dirs.append(self.options.output_directory)
         if self.options.filename:
             dirs.append(self.options.filename)
