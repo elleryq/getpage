@@ -90,11 +90,9 @@ class GetPage():
 
     def _insert_origin_div(self, soup, url, title):
         div = Tag(soup, "div")
-        span = Tag(soup, "span")
         link = self._make_anchor(soup, url, title)
-        span.attrs.append(('class', 'origin'))
-        span.insert(0, link)
-        div.insert(0, span)
+        p = self._make_p(soup, 'origin', [link])
+        div.insert(0, p)
         soup.body.insert(0, div)
 
     def _make_anchor(self, soup, href, title):
@@ -103,6 +101,13 @@ class GetPage():
         link.attrs.append(('title', title))
         link.setString(title)
         return link
+
+    def _make_p(self, soup, clazz, tags):
+        p = Tag(soup, "p")
+        p.attrs.append(('class', clazz))
+        for tag in reversed(tags):
+            p.insert(0, tag)
+        return p
 
     def get_image_as_base64(self, url):
         """ Takes the URL of a HTML Page. Returns a base64 string.
