@@ -25,6 +25,7 @@ from BeautifulSoup import BeautifulSoup, Tag
 import urlparse
 import logging
 from readability.readability import Document
+from datetime import datetime
 
 
 class GetPage():
@@ -91,8 +92,11 @@ class GetPage():
     def _insert_origin_div(self, soup, url, title):
         div = Tag(soup, "div")
         link = self._make_anchor(soup, url, title)
-        p = self._make_p(soup, 'origin', [link])
-        div.insert(0, p)
+        origin = self._make_p(soup, 'origin', [link])
+        div.insert(0, origin)
+        grab_date = self._make_p(soup, 'grab_date', [])
+        grab_date.setString(str(datetime.now()))
+        div.insert(0, grab_date)
         soup.body.insert(0, div)
 
     def _make_anchor(self, soup, href, title):
