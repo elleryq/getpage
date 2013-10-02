@@ -91,14 +91,18 @@ class GetPage():
     def _insert_origin_div(self, soup, url, title):
         div = Tag(soup, "div")
         span = Tag(soup, "span")
-        link = Tag(soup, "a")
-        link.attrs.append(('href', url))
-        link.attrs.append(('title', title))
-        link.setString(title)
+        link = self._make_anchor(soup, url, title)
         span.attrs.append(('class', 'origin'))
         span.insert(0, link)
         div.insert(0, span)
         soup.body.insert(0, div)
+
+    def _make_anchor(self, soup, href, title):
+        link = Tag(soup, "a")
+        link.attrs.append(('href', href))
+        link.attrs.append(('title', title))
+        link.setString(title)
+        return link
 
     def get_image_as_base64(self, url):
         """ Takes the URL of a HTML Page. Returns a base64 string.
