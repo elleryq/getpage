@@ -27,8 +27,6 @@ import logging
 from readability.readability import Document
 from datetime import datetime
 
-logger = logging.getLogger("getpage2")
-
 
 class GetPage():
 
@@ -50,7 +48,7 @@ class GetPage():
     def add_html(self, url):
         """ Takes the URL of a HTML Page.
         """
-        logger.info("Getting page: {0}".format(url))
+        logging.info("Getting page: {0}".format(url))
         self._base_url = url
         response = urllib2.urlopen(url)
         html = response.read()
@@ -119,7 +117,7 @@ class GetPage():
     def get_image_as_base64(self, url):
         """ Takes the URL of a HTML Page. Returns a base64 string.
         """
-        logger.info("Getting image: {0}".format(url))
+        logging.info("Getting image: {0}".format(url))
         try:
             response = urllib2.urlopen(url)
             mime_type = response.info().gettype()
@@ -129,14 +127,14 @@ class GetPage():
             return 'data:{0};base64,{1}'.format(mime_type, base64str)
         except urllib2.HTTPError, err:
             if err.code == 404:
-                logger.error("Not found! {0}".format(url))
+                logging.error("Not found! {0}".format(url))
             elif err.code == 403:
-                logger.error("Access denied!")
+                logging.error("Access denied!")
             else:
-                logger.error("Something happened! Error code {0}".format(
+                logging.error("Something happened! Error code {0}".format(
                     err.code))
         except urllib2.URLError, err:
-            logger.error("Some other error happened: {0}".format(err.reason))
+            logging.error("Some other error happened: {0}".format(err.reason))
 
     def retrieve(self, url):
         """ Takes the URL of a HTML Page. Returns a MIME encapsulated form of
@@ -152,18 +150,18 @@ class GetPage():
         dirs = [os.getcwd()]
         if self.options.output_directory:
             try:
-                logger.info("Creating output directory: {0}".format(
+                logging.info("Creating output directory: {0}".format(
                     self.options.output_directory))
                 os.makedirs(self.options.output_directory)
-            except OSError, ex:
-                logger.error("Directory is already existed, skip to make dirs.")
+            except OSError:
+                logging.error("Directory is already existed, skip to make.")
             dirs.append(self.options.output_directory)
         if self.options.filename:
             dirs.append(self.options.filename)
-            logger.info("Saved as {0}".format(self.options.filename))
+            logging.info("Saved as {0}".format(self.options.filename))
         else:
             dirs.append("{0}.html".format(self._title.encode('utf-8')))
-            logger.info("Saved as {0}".format(self._title.encode('utf-8')))
+            logging.info("Saved as {0}".format(self._title.encode('utf-8')))
         filename = os.path.join(*dirs)
         f = open(filename, 'w')
         f.write(self._msg)
@@ -191,9 +189,6 @@ if __name__ == '__main__':
     parser.add_argument("-d", "--debug",
                         action="store_false", dest="verbose", default=True,
                         help="print debug and verbose messages to stdout")
-    parser.add_argument("-v", "--verbose",
-                        action="store_false", dest="verbose", default=True,
-                        help="print verbose messages to stdout")
     parser.add_argument("-q", "--quiet",
                         action="store_false", dest="verbose", default=True,
                         help="don't print messages to stdout")
@@ -201,12 +196,16 @@ if __name__ == '__main__':
                         help="name of the outputfile DIRECTORY",
                         metavar="DIRECTORY")
 
+    options = parser.parse_args()
+
+    if options.verbose:
+        logging.basicConfig(level=logging.DEBUG)
+    else:
+        logging.basicConfig(filename='/dev/null', level=logging.DEBUG)
+
     if os.path.exists("logging_config"):
         logging.config.fileConfig("logging_config")
-    else:
-        logging.basicConfig(level=logging.DEBUG)
 
-    options = parser.parse_args()
     page = GetPage(options)
     page.retrieve(options.url)
     print("done.")
